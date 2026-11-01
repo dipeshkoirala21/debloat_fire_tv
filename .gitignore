@@ -1,0 +1,8 @@
+# Build output and the locally generated signing key
+launcher/out/
+launcher/keystore.jks
+
+# Per-TV package lists written by debloat.sh (restore_firetv.sh reads them)
+backup/
+
+.DS_Store

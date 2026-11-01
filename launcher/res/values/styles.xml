@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- No window animations: the home screen appears instantly beneath the service's overlay. -->
+    <style name="HomeTheme" parent="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowBackground">@drawable/window_bg</item>
+        <!-- No starting window: it would cross-fade over the first frame, visible as a dim pulse. -->
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+</resources>

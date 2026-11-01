@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.custom.tvhome"
+    android:versionCode="1"
+    android:versionName="1.0">
+
+    <uses-sdk android:minSdkVersion="25" android:targetSdkVersion="30" />
+
+    <!-- Used only for the weather: IP city lookup (geojs.io, ipapi.co) and Open-Meteo. No ads. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Granted over adb (pm grant); lets the service see Home presses the moment they happen. -->
+    <uses-permission android:name="android.permission.READ_LOGS" />
+
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <!-- Android 11 package visibility for the apps we launch. -->
+    <queries>
+        <package android:name="com.netflix.ninja" />
+        <package android:name="org.smarttube.stable" />
+        <package android:name="com.amazon.firebat" />
+        <package android:name="com.stremio.one" />
+        <package android:name="com.amazon.firetv.youtube" />
+        <package android:name="com.amazon.tv.launcher" />
+        <intent><action android:name="android.settings.SETTINGS" /></intent>
+    </queries>
+
+    <application
+        android:label="Home"
+        android:icon="@drawable/banner"
+        android:banner="@drawable/banner"
+        android:allowBackup="false"
+        android:hardwareAccelerated="true"
+        android:largeHeap="false">
+
+        <activity
+            android:name=".HomeActivity"
+            android:theme="@style/HomeTheme"
+            android:launchMode="singleTask"
+            android:stateNotNeeded="true"
+            android:clearTaskOnLaunch="true"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".HomeButtonService"
+            android:label="Custom Home button"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/home_button_service" />
+        </service>
+    </application>
+</manifest>
