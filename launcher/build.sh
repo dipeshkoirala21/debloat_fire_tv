@@ -26,7 +26,9 @@ rm -rf $OUT && mkdir -p $OUT/res $OUT/classes
 "$BT"/aapt2 compile --dir res -o $OUT/res/
 "$BT"/aapt2 link -o $OUT/unsigned.apk -I "$JAR" --manifest AndroidManifest.xml \
   --java $OUT/gen $OUT/res/*.flat --min-sdk-version 25 --target-sdk-version 30
-javac -source 8 -target 8 -nowarn -Xlint:-options -bootclasspath "$JAR" -classpath "$JAR" \
+# --release supplies Java 8 lambda bootstrap signatures missing from Android stubs.
+# d8 below desugars lambdas for the minimum Android API.
+javac --release 8 -nowarn -Xlint:-options -classpath "$JAR" \
   -d $OUT/classes $(find src $OUT/gen -name '*.java')
 "$BT"/d8 --min-api 25 --lib "$JAR" --output $OUT $(find $OUT/classes -name '*.class')
 (cd $OUT && zip -qj unsigned.apk classes.dex)

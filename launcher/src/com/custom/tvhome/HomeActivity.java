@@ -67,7 +67,8 @@ public class HomeActivity extends Activity implements HomeView.Listener {
         home.removeCallbacks(weatherTick);
         home.postDelayed(weatherTick, WEATHER_CHECK_MS);
         // Already in front (Home pressed while home was showing): release after the next frame.
-        if (hasWindowFocus()) releaseOverlayAfterNextFrame();    }
+        if (hasWindowFocus()) releaseOverlayAfterNextFrame();
+    }
 
     @Override
     protected void onPause() {
@@ -96,6 +97,11 @@ public class HomeActivity extends Activity implements HomeView.Listener {
     @Override
     public void onBackPressed() {
         // This is the home screen: there is nothing behind it.
+    }
+
+    @Override
+    public void onMoreApps() {
+        startActivity(new Intent(this, MoreAppsActivity.class));
     }
 
     @Override

@@ -12,6 +12,7 @@ Turns an Amazon Fire TV Stick into a fast, ad-free box for the few apps you actu
 - **Ad-blocking DNS.** Points the TV at AdGuard DNS, which also stops ad traffic from the few Amazon services Fire OS won't let you disable.
 - **No surprise updates.** Blocks Fire OS system updates, which would otherwise undo the debloat.
 - **Frees RAM.** When you return home, the app you left is fully closed so the next one gets the memory. Free RAM went from ~485 MB to ~670 MB on a Fire TV Stick 4K.
+- **More Apps.** A small underlined link below Settings opens a separate screen for extra apps, the RAM worker, and the Roborock S5. Use **+ Add apps** to choose installed Fire TV apps without changing the home dock.
 - **Faster UI.** Shorter system animations, and the home screen is compiled ahead of time.
 
 Everything can be undone with one script.
@@ -86,11 +87,10 @@ Replace `192.168.1.50` with your TV's IP.
 #    --remove-apps lists the third-party apps not in APPS and asks before uninstalling them.
 ./debloat.sh 192.168.1.50 --remove-apps
 
-# 2. Build and install the home screen. The TV reboots into it.
+# 2. Build/install, reboot, then reconnect and verify the automatic RAM worker.
 launcher/install.sh 192.168.1.50
 
-# 3. About a minute later, once the TV is back up, start the RAM cleaner.
-cleaner/start_cleaner.sh 192.168.1.50
+# install.sh waits for boot and starts the RAM worker before reporting completion.
 ```
 
 `debloat.sh` options:
@@ -98,6 +98,16 @@ cleaner/start_cleaner.sh 192.168.1.50
 - `--yes`: don't ask before uninstalling.
 - `--no-dns`: leave DNS alone.
 - `--keep-updates`: don't block Fire OS updates.
+
+## More Apps and restarting the RAM worker
+
+Focus **Settings**, press **Down**, then select **More Apps >**. The original six home tiles stay in place.
+
+- **RAM cleaner → Restart worker** replaces the automatic background worker. It does not open individual app settings or ask you to force-stop apps. A response from the shell process confirms the restart.
+- **+ Add apps** lists launchable apps installed on the Fire TV. Select an app to add or remove it from More Apps, then press Back. These shortcuts persist after reboot. To remove a shortcut directly, focus it in More Apps and hold Select or press Menu, then choose **Remove shortcut**. This does not uninstall the app. Adding a shortcut does not add system apps to the RAM cleaner's allowlist; that remains `APPS` in `config.sh`.
+- **Roborock S5** opens the local Valetudo interface. The TV discovers `Valetudo MedicalUnwelcomeShark Web` via DNS-SD because this Fire OS build cannot resolve the `.local` hostname directly. Use arrows to move the pointer, Select to click, Menu to switch between pointer movement and scrolling, Play/Pause to toggle fitted and larger views, and Back to return. The browser renders into a larger virtual viewport and scales into the TV-safe area so fixed panels are not cropped by the toolbar. The vacuum stays entirely on the local network.
+
+The shell supervisor automatically replaces a worker that exits, and the worker reconnects if its log reader exits. The button also lets you deliberately restart the worker while its supervisor remains available.
 
 ## After a reboot or power loss
 
@@ -109,11 +119,13 @@ cleaner/start_cleaner.sh 192.168.1.50
 
 Turning the TV off with the remote only puts the stick to sleep, so the cleaner keeps running. If your stick is powered from the TV's USB port and the TV cuts that power when it turns off, use the wall adapter instead. Everything else (home screen, ad blocking, Home button) survives reboots on its own.
 
+The launcher cannot restore shell privileges after a power loss: this device blocks local ADB. In that case the worker dialog reports offline. Restarting without a computer requires an approved ADB connection from another always-on device. A service on the Valetudo vacuum is a possible host, but requires its SSH login and a compatibility check before deployment; it is not currently installed.
+
 ## How it works
 
 - **Home screen** (`launcher/`): a small Android app written in plain Java with no libraries, built with the SDK command-line tools (no Gradle). Backdrops are pre-rendered bitmaps, which keeps it at 60 fps on the stick's weak GPU.
 - **Home button**: Amazon's launcher can't be disabled, and Fire OS doesn't pass the Home key to apps. An accessibility service watches the system log for the moment Amazon's home starts; that's why `install.sh` grants `READ_LOGS`. The service then covers the screen with an identical copy of the new home screen and brings the real one up underneath, so you never see Amazon's.
-- **RAM cleaner** (`cleaner/`): Fire OS ignores app-kill requests from apps and blocks apps from using adb on the TV itself. So a small script runs as the adb shell user, which may force-stop apps, and closes your apps whenever the home screen opens.
+- **RAM cleaner** (`cleaner/`): Fire OS ignores app-kill requests from apps and blocks apps from using adb on the TV itself. A small supervisor runs as the adb shell user and owns the automatic worker. The worker closes configured apps whenever home opens, checks the foreground before each app, and retries interrupted log readers. The supervisor restarts an exited worker or handles a fixed `RESTART` request from More Apps. Startup checks an actual response, rather than just the presence of a process. Diagnostics are bounded in `/data/local/tmp/firetv_cleaner.log` and one rotated copy.
 - **Weather**: the city comes from your public IP (GeoJS, with ipapi.co as backup). Current conditions and the 15-minute rain/snow forecast come from Open-Meteo. No accounts or keys, and these are the home screen's only network requests.
 
 ## Undo everything
@@ -137,6 +149,10 @@ This removes the home screen and cleaner, re-enables the Amazon services, re-all
 | `javac not found` / `zip not found` | Install the JDK and zip from Requirements, and check with `javac -version`. |
 | Weather is blank | It appears within a minute or two of the TV having internet. After that it's cached. |
 | Home button stopped working after a Fire OS update | Run `launcher/install.sh <ip>` again. It re-enables the accessibility service. |
+| Worker is offline after a reboot | Start `cleaner/start_cleaner.sh <ip>` from an approved external device. The TV cannot regain shell privileges by itself. |
+| Valetudo cannot be found | Check that the vacuum and TV share Wi-Fi and that multicast/mDNS is allowed. The configured DNS-SD service name is in `LocalVacuum.java`. |
+
+Host-side checks: `python3 cleaner/test_cleaner.py`, `python3 cleaner/test_install.py`, and `python3 cleaner/test_supervisor.py`. The installer only reports completion after the rebooted TV responds and the worker starts successfully. The launcher still builds with the SDK tools directly; `javac --release 8` and `d8` handle Java lambdas without Gradle.
 
 ## Things to know
 

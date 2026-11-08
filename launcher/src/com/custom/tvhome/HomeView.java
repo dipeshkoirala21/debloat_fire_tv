@@ -34,6 +34,7 @@ final class HomeView extends FrameLayout implements Weather.Listener {
 
     interface Listener {
         void onOpen(int index, View tile);
+        void onMoreApps();
     }
 
     private static final int TILE_W = 128;
@@ -69,6 +70,8 @@ final class HomeView extends FrameLayout implements Weather.Listener {
     private final FrameLayout[] tiles = new FrameLayout[AppCatalog.APPS.length];
     private final View[] dims = new View[AppCatalog.APPS.length];
     private final View[] sheens = new View[AppCatalog.APPS.length];
+    private android.widget.Button moreApps;
+    private static boolean moreFocused;
     private int shown = -1;
     private boolean animate = true;
     private final LinearLayout weatherBlock;
@@ -237,17 +240,54 @@ final class HomeView extends FrameLayout implements Weather.Listener {
         dlp.bottomMargin = dp(44);
         addView(dock, dlp);
 
+        moreApps = new android.widget.Button(context);
+        moreApps.setId(View.generateViewId());
+        moreApps.setText("More Apps >");
+        moreApps.setAllCaps(false);
+        moreApps.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        moreApps.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        moreApps.setPaintFlags(moreApps.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
+        moreApps.setPadding(0, 0, 0, 0);
+        moreApps.setMinWidth(0);
+        moreApps.setMinHeight(0);
+        moreApps.setStateListAnimator(null);
+        moreApps.setBackgroundColor(Color.TRANSPARENT);
+        moreApps.setFocusable(interactive);
+        moreApps.setClickable(interactive);
+        if (android.os.Build.VERSION.SDK_INT >= 26) moreApps.setDefaultFocusHighlightEnabled(false);
+        // Anchor to the Settings tile, including the dock's inset. Nothing else in the dock moves.
+        LayoutParams mlp = new LayoutParams(dp(TILE_W), dp(32), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        mlp.leftMargin = dp((TILE_W + TILE_GAP) * (tiles.length - 1) / 2);
+        mlp.bottomMargin = dp(22);
+        addView(moreApps, mlp);
+        FrameLayout settings = tiles[tiles.length - 1];
+        settings.setNextFocusDownId(moreApps.getId());
+        moreApps.setNextFocusUpId(settings.getId());
+        moreApps.setNextFocusDownId(moreApps.getId());
+        moreApps.setNextFocusLeftId(moreApps.getId());
+        moreApps.setNextFocusRightId(moreApps.getId());
+        moreApps.setOnFocusChangeListener((v, focused) -> {
+            moreFocused = focused;
+            moreApps.setTextColor(focused ? Color.WHITE : 0xB3FFFFFF);
+            moreApps.setScaleX(focused ? 1.08f : 1f);
+            moreApps.setScaleY(focused ? 1.08f : 1f);
+        });
+        if (interactive) moreApps.setOnClickListener(v -> { if (listener != null) listener.onMoreApps(); });
+        moreApps.setTextColor(moreFocused ? Color.WHITE : 0xB3FFFFFF);
+        moreApps.setScaleX(moreFocused ? 1.08f : 1f);
+        moreApps.setScaleY(moreFocused ? 1.08f : 1f);
         showApp(AppCatalog.focused, false);
-        for (int i = 0; i < tiles.length; i++) setLifted(i, i == AppCatalog.focused, false);
+        for (int i = 0; i < tiles.length; i++) setLifted(i, !moreFocused && i == AppCatalog.focused, false);
     }
 
     /** Moves focus to a tile without animating, so the screen matches the overlay frame exactly. */
     void focusInstantly(int index) {
         animate = false;
-        tiles[index].requestFocus();
+        if (moreFocused) moreApps.requestFocus();
+        else tiles[index].requestFocus();
         animate = true;
         showApp(index, false);
-        for (int i = 0; i < tiles.length; i++) setLifted(i, i == index, false);
+        for (int i = 0; i < tiles.length; i++) setLifted(i, !moreFocused && i == index, false);
     }
 
     /** First appearance after boot: the dock and title rise into place. */
@@ -322,6 +362,7 @@ final class HomeView extends FrameLayout implements Weather.Listener {
                 public void onFocusChange(View v, boolean hasFocus) {
                     setLifted(index, hasFocus, animate);
                     if (hasFocus) {
+                        moreFocused = false;
                         AppCatalog.focused = index;
                         showApp(index, animate);
                     }
@@ -570,6 +611,10 @@ final class HomeView extends FrameLayout implements Weather.Listener {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (interactive && moreApps.hasFocus() && event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+            if (event.getAction() == KeyEvent.ACTION_UP) tiles[tiles.length - 1].requestFocus();
+            return true;
+        }
         return interactive && super.dispatchKeyEvent(event);
     }
 
